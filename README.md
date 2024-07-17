@@ -1,6 +1,8 @@
 # handler_table
 
 [![Crates.io](https://img.shields.io/crates/v/handler_table)](https://crates.io/crates/handler_table)
+[![Docs.rs](https://docs.rs/handler_table/badge.svg)](https://docs.rs/handler_table)
+[![CI](https://github.com/arceos-org/handler_table/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/arceos-org/handler_table/actions/workflows/ci.yml)
 
 A lock-free table of event handlers.
 
