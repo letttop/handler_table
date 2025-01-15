@@ -22,4 +22,10 @@ TABLE.register_handler(1, || {
 
 assert!(TABLE.handle(0)); // print "Hello, event 0!"
 assert!(!TABLE.handle(2)); // unregistered
+
+assert!(TABLE.unregister_handler(2).is_none());
+let func = TABLE.unregister_handler(1).unwrap(); // retrieve the handler
+func(); // print "Hello, event 1!"
+
+assert!(!TABLE.handle(1)); // unregistered
 ```
