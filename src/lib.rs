@@ -5,28 +5,36 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 
 /// The type of an event handler.
 ///
-/// Currently no arguments and return values are supported.
+/// Currently, only no arguments and return values are supported.
 pub type Handler = fn();
 
 /// A lock-free table of event handlers.
 ///
-/// It internally uses an array of `AtomicUsize` to store the handlers.
+/// Internally stores up to `N` function pointers in an array of `AtomicUsize`.
+/// All operations are O(1), and are safe for concurrent use in `no_std`.
+///
+/// # Type Parameters
+/// - `N`: Number of handler slots (must be > 0).
 pub struct HandlerTable<const N: usize> {
     handlers: [AtomicUsize; N],
 }
 
 impl<const N: usize> HandlerTable<N> {
-    /// Creates a new handler table with all entries empty.
+    /// Creates a new `HandlerTable` with all slots empty.
     pub const fn new() -> Self {
         Self {
             handlers: [const { AtomicUsize::new(0) }; N],
         }
     }
 
-    /// Registers a handler for the given index.
+    /// Attempts to register `handler` in slot `idx`.
     ///
-    /// Returns `true` if the registration succeeds, `false` if the index is out
-    /// of bounds or the handler is already registered.
+    /// - `idx`: Slot index (0 ≤ `idx` < `N`).
+    /// - `handler`: Function pointer to register.
+    ///
+    /// # Returns
+    /// - `true` if the slot was empty and registration succeeded.
+    /// - `false` if `idx` is out of range or the slot was already occupied.
     pub fn register_handler(&self, idx: usize, handler: Handler) -> bool {
         if idx >= N {
             return false;
@@ -36,9 +44,17 @@ impl<const N: usize> HandlerTable<N> {
             .is_ok()
     }
 
-    /// Unregisters the handler for the given index.
+    /// Unregisters and returns the handler in slot `idx`.
     ///
-    /// Returns the existing handler if it is registered, `None` otherwise.
+    /// # Parameters
+    /// - `idx`: Slot index (0 ≤ `idx` < `N`).
+    ///
+    /// # Returns
+    /// - `Some(handler)` if a handler was registered.
+    /// - `None` if `idx` is out of range or the slot was empty.
+    ///
+    /// # Concurrency
+    /// Lock-free and thread-safe: uses atomic swap.
     pub fn unregister_handler(&self, idx: usize) -> Option<Handler> {
         if idx >= N {
             return None;
@@ -51,10 +67,20 @@ impl<const N: usize> HandlerTable<N> {
         }
     }
 
-    /// Handles the event with the given index.
+    /// Invokes the handler in slot `idx`.
     ///
-    /// Returns `true` if the event is handled, `false` if no handler is
-    /// registered for the given index.
+    /// # Parameters
+    /// - `idx`: Slot index (0 ≤ `idx` < `N`).
+    ///
+    /// # Returns
+    /// - `true` if a handler was found and called.
+    /// - `false` if `idx` is out of range or the slot was empty.
+    ///
+    /// # Concurrency
+    /// Lock-free and thread-safe: uses atomic load.
+    ///
+    /// # Panics
+    /// Panics if the handler itself panics.
     pub fn handle(&self, idx: usize) -> bool {
         if idx >= N {
             return false;
